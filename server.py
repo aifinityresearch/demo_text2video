@@ -1,8 +1,9 @@
 from fastapi import FastAPI, Form
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 import subprocess
 import time
 import os
+import glob
 
 app = FastAPI()
 OUTPUT_DIR = "/home/aifinity/Wan2.1/outputs"
@@ -11,19 +12,42 @@ SCRIPT_PATH = "/home/aifinity/Wan2.1/generate.py"
 
 @app.post("/generate")
 def generate_video(prompt: str = Form(...)):
-    timestamp = time.strftime("%Y%m%d_%H%M%S")
-    filename = f"output_{timestamp}.mp4"
-    output_path = os.path.join(OUTPUT_DIR, filename)
+    print(f"[INFO] Received prompt: {prompt}")
+
+    # Capture baseline file list before generation
+    existing_files = set(os.listdir(OUTPUT_DIR))
 
     cmd = [
         "python3", SCRIPT_PATH,
         "--task", "t2v-1.3B",
         "--size", "832*480",
         "--ckpt_dir", MODEL_PATH,
-        "--prompt", prompt,
-        "--output_path", output_path
+        "--prompt", prompt
+        # ⛔️ Removed --output_path
     ]
 
-    subprocess.run(cmd, check=True)
+    print(f"[INFO] Running command: {' '.join(cmd)}")
 
-    return FileResponse(output_path, media_type="video/mp4", filename=filename)
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"[ERROR] Generation failed with return code {e.returncode}")
+        return JSONResponse(status_code=500, content={"error": f"Script failed: {e}"})
+    except Exception as e:
+        print(f"[ERROR] Unexpected error: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+    # 🕵️ Find newly created video file
+    new_files = set(os.listdir(OUTPUT_DIR)) - existing_files
+    mp4_candidates = [f for f in new_files if f.endswith(".mp4")]
+
+    if not mp4_candidates:
+        print("[ERROR] No .mp4 file was created.")
+        return JSONResponse(status_code=500, content={"error": "Video generation failed. No .mp4 output found."})
+
+    # Grab the newest file (just in case)
+    full_paths = [os.path.join(OUTPUT_DIR, f) for f in mp4_candidates]
+    latest_file = max(full_paths, key=os.path.getctime)
+
+    print(f"[SUCCESS] Returning video file: {latest_file}")
+    return FileResponse(latest_file, media_type="video/mp4", filename=os.path.basename(latest_file))
