@@ -6,14 +6,16 @@ import os
 import glob
 
 app = FastAPI()
-OUTPUT_DIR = "/home/aifinity/Wan2.1/outputs"
+OUTPUT_DIR = "/home/aifinity/Wan2.1/demo_text2video/outputs"
 MODEL_PATH = "/home/aifinity/Wan2.1/models/Wan2.1-T2V-1.3B"
 SCRIPT_PATH = "/home/aifinity/Wan2.1/generate.py"
+OUTPUT_DIR = os.getcwd()
+
 
 @app.post("/generate")
 def generate_video(prompt: str = Form(...)):
     print(f"[INFO] Received prompt: {prompt}")
-    os.makedirs(OUTPUT_DIR, exist_ok=True)  # Create the folder if it doesn't exist
+ ## os.makedirs(OUTPUT_DIR, exist_ok=True)  # Create the folder if it doesn't exist
     # Capture baseline file list before generation
     existing_files = set(os.listdir(OUTPUT_DIR))
   
