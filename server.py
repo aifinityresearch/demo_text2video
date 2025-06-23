@@ -13,10 +13,11 @@ SCRIPT_PATH = "/home/aifinity/Wan2.1/generate.py"
 @app.post("/generate")
 def generate_video(prompt: str = Form(...)):
     print(f"[INFO] Received prompt: {prompt}")
-
+    OUTPUT_DIR = "/home/aifinity/Wan2.1/outputs"
+    os.makedirs(OUTPUT_DIR, exist_ok=True)  # Create the folder if it doesn't exist
     # Capture baseline file list before generation
     existing_files = set(os.listdir(OUTPUT_DIR))
-
+  
     cmd = [
         "python3", SCRIPT_PATH,
         "--task", "t2v-1.3B",
